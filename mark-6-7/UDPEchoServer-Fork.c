@@ -28,8 +28,9 @@ float fun_param_3 = 3;
 int main(int argc, char *argv[])
 {
     int servSock;
-    int clntSock;
     unsigned short echoServPort;
+    int servSock2;
+    unsigned short observerPort;
     pid_t processID;
     unsigned int childProcCount = 0;
     const char *sem_name = "sem100";
@@ -37,9 +38,12 @@ int main(int argc, char *argv[])
     int SIZE = 256;
 
     /////
-    struct sockaddr_in echoClntAddr; /* Client address */
-    unsigned int clntLen;            /* Length of client address data structure */
-    unsigned int cliAddrLen;         /* Length of incoming message */
+    struct sockaddr_in observer_addr;
+    struct sockaddr_in echoClntAddr;  /* Client address */
+    unsigned int clntLen;             /* Length of client address data structure */
+    struct sockaddr_in echoClntAddr2; /* Client address */
+    unsigned int cliAddrLen2;         /* Length of client address data structure */
+    unsigned int cliAddrLen;          /* Length of incoming message */
     /////
 
     int shm_fd;
@@ -75,16 +79,28 @@ int main(int argc, char *argv[])
         exit(-1);
     };
 
-    if (argc != 2)
+    if (argc != 3)
     {
-        fprintf(stderr, "Usage:  %s <Server Port>\n", argv[0]);
+        fprintf(stderr, "Usage:  %s <Server Port> <Observer Port>\n", argv[0]);
         exit(1);
     }
 
     echoServPort = atoi(argv[1]);
-
+    observerPort = atoi(argv[2]);
     servSock = CreateUDPServerSocket(echoServPort);
+    servSock2 = CreateUDPServerSocket(observerPort);
+    char b[1];
+    if (recvfrom(servSock2, b, 1, 0,
+                 (struct sockaddr *)&observer_addr, &cliAddrLen2) < 0)
+    {
+        DieWithError("recvfrom() failed");
+    };
+    printf("%s", b);
+    sendto(servSock2, b, 1, 0,
+           (const struct sockaddr *)&observer_addr, cliAddrLen2);
+    printf("Наблюдатель подключен");
 
+    fflush(stdout);
     int cur = 0;
     int SIZE_F = sizeof(float);
 
@@ -145,18 +161,20 @@ int main(int argc, char *argv[])
                 float ans = atof(ansb);
                 sem_wait(sems);
                 pid_t pid = getpid();
-                printf("area: %f - Process %d\n", ans, pid);
+
+                char out[23];
+                snprintf(out, 100, "area: %f - Process %d\n", ans, pid);
+                printf("%s\n", out);
+                sendto(servSock2, out, 23, 0,
+                       (const struct sockaddr *)&echoClntAddr2, cliAddrLen2);
+
                 fflush(stdout);
                 float s = atof((char *)ptrs1);
                 sprintf(ptrs1, "%f", s + ans);
                 sem_post(sems);
             }
             sem_unlink(sem_name);
-
-            exit(0);
         }
-
-        close(clntSock);
 
         float cur = atof((char *)ptr);
         if (childProcCount == 0 && cur > 9)
@@ -169,5 +187,6 @@ int main(int argc, char *argv[])
         }
         childProcCount--;
     }
+
     exit(0);
 }
