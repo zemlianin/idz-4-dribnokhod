@@ -50,22 +50,31 @@ int main(int argc, char *argv[])
 
     char lb[1] = "1";
     sendto(sock, lb, 1, 0, (struct sockaddr *)&echoServAddr, sizeof(echoServAddr));
+    if (recvfrom(sock, lb, 1, 0,
+                 NULL, NULL) < 0)
+    {
+        DieWithError("recvfrom() failed");
+    }
+    sendto(sock, lb, 1, 0, (struct sockaddr *)&echoServAddr, sizeof(echoServAddr));
     while (true)
     {
-        if (recvfrom(sock, lb, 26, 0,
-                     (struct sockaddr *)&fromAddr, &fromSize) < 0)
+        printf("aa\n");
+        fflush(stdout);
+        sleep(1);
+        if (recvfrom(sock, lb, 1, 0,
+                     NULL, NULL) < 0)
         {
             DieWithError("recvfrom() failed");
         }
+        printf("aa\n");
+        fflush(stdout);
+        sleep(1);
         // bytesRcvd = read(sock, rb, SIZE_F);
         printf("%s", lb);
         if (lb[0] == '#')
         {
             break;
         }
-        printf("aa\n");
-        fflush(stdout);
-        sleep(1);
     }
     printf("\n"); /* Print a final linefeed */
     sleep(2);

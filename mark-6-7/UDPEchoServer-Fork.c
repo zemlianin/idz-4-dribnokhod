@@ -85,24 +85,33 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
+    int SIZE_F = sizeof(float);
     echoServPort = atoi(argv[1]);
     observerPort = atoi(argv[2]);
     servSock = CreateUDPServerSocket(echoServPort);
     servSock2 = CreateUDPServerSocket(observerPort);
-    char b[1];
-    if (recvfrom(servSock2, b, 1, 0,
+    char b[SIZE_F];
+    if (recvfrom(servSock2, b, 3, 0,
                  (struct sockaddr *)&observer_addr, &cliAddrLen2) < 0)
     {
         DieWithError("recvfrom() failed");
     };
+
     printf("%s", b);
-    sendto(servSock2, b, 1, 0,
-           (const struct sockaddr *)&observer_addr, cliAddrLen2);
+    char outt[SIZE_F];
+    sprintf(outt, "%f", -1.1);
+    ssize_t t = sendto(servSock2, outt, sizeof(float), 0,
+                       (const struct sockaddr *)&observer_addr, cliAddrLen2);
+
+    if (t < 0)
+    {
+        DieWithError("sendto() failed");
+    }
+
     printf("Наблюдатель подключен");
 
     fflush(stdout);
     int cur = 0;
-    int SIZE_F = sizeof(float);
 
     for (int i = 0; i < 4; i++)
     {
@@ -165,8 +174,14 @@ int main(int argc, char *argv[])
                 char out[23];
                 snprintf(out, 100, "area: %f - Process %d\n", ans, pid);
                 printf("%s\n", out);
-                sendto(servSock2, out, 23, 0,
-                       (const struct sockaddr *)&echoClntAddr2, cliAddrLen2);
+
+                ssize_t t = sendto(servSock2, out, sizeof(out), 0,
+                                   (const struct sockaddr *)&observer_addr, cliAddrLen2);
+
+                if (t < 0)
+                {
+                    DieWithError("sendto() failed");
+                }
 
                 fflush(stdout);
                 float s = atof((char *)ptrs1);
