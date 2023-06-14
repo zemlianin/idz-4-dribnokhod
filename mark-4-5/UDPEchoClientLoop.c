@@ -48,6 +48,8 @@ int main(int argc, char *argv[])
     unsigned int echoStringLen;      /* Length of string to echo */
     int bytesRcvd, totalBytesRcvd;   /* Bytes read in single recv()
                                         and total bytes read */
+    struct sockaddr_in fromAddr;     /* Source address of echo */
+    unsigned int fromSize;
 
     if ((argc < 2) || (argc > 3)) /* Test for correct number of arguments */
     {
@@ -57,14 +59,10 @@ int main(int argc, char *argv[])
     }
 
     servIP = argv[1]; /* First arg: server IP address (dotted quad) */
-
-    if (argc == 3)
-        echoServPort = atoi(argv[2]); /* Use given port, if any */
-    else
-        echoServPort = 7; /* 7 is the well-known port for the echo service */
-
+    echoServPort = atoi(argv[2]);
     /* Create a reliable, stream socket using TCP */
-    sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
+        DieWithError("socket() failed");
 
     memset(&echoServAddr, 0, sizeof(echoServAddr));   /* Zero out structure */
     echoServAddr.sin_family = AF_INET;                /* Internet address family */
@@ -75,17 +73,19 @@ int main(int argc, char *argv[])
     char lb[SIZE_F];
     char rb[SIZE_F];
     char ansb[SIZE_F];
-    for (size_t i = 0; i < 10; i++)
-    {
-        sendto(sock, "echoString", 20, 0, (struct sockaddr *)&echoServAddr, sizeof(echoServAddr));
-    }
-
-    /*if (connect(sock, (struct sockaddr *)&echoServAddr, sizeof(echoServAddr)) < 0)
-        DieWithError("connect() failed");
+    sendto(sock, ansb, SIZE_F, 0, (struct sockaddr *)&echoServAddr, sizeof(echoServAddr));
     while (true)
     {
-        bytesRcvd = read(sock, lb, SIZE_F);
-        bytesRcvd = read(sock, rb, SIZE_F);
+        printf("start");
+        fflush(stdout);
+        if (recvfrom(sock, lb, SIZE_F, 0,
+                     (struct sockaddr *)&fromAddr, &fromSize) < 0)
+        {
+            DieWithError("recvfrom() failed");
+        }
+        recvfrom(sock, rb, SIZE_F, 0,
+                 (struct sockaddr *)&fromAddr, &fromSize);
+
         float l = atof(lb);
         float r = atof(rb);
         sleep(3);
@@ -96,8 +96,8 @@ int main(int argc, char *argv[])
             break;
         }
         sprintf(ansb, "%f", area);
-        send(sock, ansb, SIZE_F, 0);
-    }*/
+        sendto(sock, ansb, SIZE_F, 0, (struct sockaddr *)&echoServAddr, sizeof(echoServAddr));
+    }
     printf("\n"); /* Print a final linefeed */
     sleep(2);
 

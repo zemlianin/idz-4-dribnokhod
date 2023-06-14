@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
     int cur = 0;
     int SIZE_F = sizeof(float);
 
-    for (;;)
+    for (int i = 0; i < 4; i++)
     {
         cliAddrLen = sizeof(echoClntAddr);
 
@@ -97,22 +97,19 @@ int main(int argc, char *argv[])
             DieWithError("fork() failed");
         else if (processID == 0)
         {
-            while (1)
-            {
-                char echoBuffer[RCVBUFSIZE];
-                /* Block until receive message from a client */
-                recvfrom(servSock, echoBuffer, 30, 0,
-                         (struct sockaddr *)&echoClntAddr, &cliAddrLen);
-                printf("%s", echoBuffer);
-            }
-            /*close(servSock);
             char echoBuffer[RCVBUFSIZE];
+            /* Block until receive message from a client */
             int recvMsgSize;
             char lb[SIZE_F];
             char rb[SIZE_F];
             char ansb[SIZE_F];
             float l = 0;
             float r = 0;
+            if (recvfrom(servSock, ansb, SIZE_F, 0,
+                         (struct sockaddr *)&echoClntAddr, &cliAddrLen) < 0)
+            {
+                DieWithError("recvfrom() failed");
+            };
             while (cur < 10)
             {
                 sem_wait(sem);
@@ -124,8 +121,10 @@ int main(int argc, char *argv[])
                 {
                     sprintf(lb, "%f", -1.0);
                     sprintf(rb, "%f", -1.0);
-                    send(clntSock, lb, SIZE_F, 0);
-                    send(clntSock, rb, SIZE_F, 0);
+                    sendto(servSock, lb, SIZE_F, 0,
+                           (const struct sockaddr *)&echoClntAddr, sizeof(echoClntAddr));
+                    sendto(servSock, rb, SIZE_F, 0,
+                           (const struct sockaddr *)&echoClntAddr, sizeof(echoClntAddr));
                     break;
                 }
 
@@ -133,14 +132,21 @@ int main(int argc, char *argv[])
                 r = left + (cur + 1) * step;
                 sprintf(lb, "%f", l);
                 sprintf(rb, "%f", r);
-                write(clntSock, lb, SIZE_F);
-                write(clntSock, rb, SIZE_F);
+                sendto(servSock, lb, SIZE_F, 0,
+                       (const struct sockaddr *)&echoClntAddr, sizeof(echoClntAddr));
+                sendto(servSock, rb, SIZE_F, 0,
+                       (const struct sockaddr *)&echoClntAddr, sizeof(echoClntAddr));
 
-                recvMsgSize = recv(clntSock, ansb, SIZE_F, 0);
+                if (recvfrom(servSock, ansb, SIZE_F, 0,
+                             (struct sockaddr *)&echoClntAddr, &cliAddrLen) < 0)
+                {
+                    DieWithError("recvfrom() failed");
+                };
                 float ans = atof(ansb);
                 sem_wait(sems);
                 pid_t pid = getpid();
                 printf("area: %f - Process %d\n", ans, pid);
+                fflush(stdout);
                 float s = atof((char *)ptrs1);
                 sprintf(ptrs1, "%f", s + ans);
                 sem_post(sems);
@@ -148,11 +154,9 @@ int main(int argc, char *argv[])
             sem_unlink(sem_name);
 
             exit(0);
-            */
         }
 
         close(clntSock);
-        childProcCount++;
 
         while (childProcCount)
         {
@@ -166,13 +170,14 @@ int main(int argc, char *argv[])
                 childProcCount--;
         }
         float cur = atof((char *)ptr);
-        if (childProcCount <= 1 && cur >= 9)
+        /*if (childProcCount == 0 && cur >= 9)
         {
             float s = atof((char *)ptrs1);
             printf("all area: %f\n", s);
             fflush(stdout);
             close(servSock);
             exit(0);
-        } //*/
+        }*/
+        exit(0);
     }
 }

@@ -1,7 +1,7 @@
 all: UDPEchoClientLoop UDPEchoServer-Fork
-TCPEchoClientLoop: UDPEchoClientLoop.c DieWithError.c
+UDPEchoClientLoop: UDPEchoClientLoop.c DieWithError.c
 	gcc UDPEchoClientLoop.c DieWithError.c -o UDPEchoClientLoop
-TCPEchoServer-Fork: UDPEchoServer.h UDPEchoServer-Fork.c DieWithError.c
+UDPEchoServer-Fork: UDPEchoServer.h UDPEchoServer-Fork.c DieWithError.c
 	gcc UDPEchoServer-Fork.c DieWithError.c \
 	CreateUDPServerSocket.c\
-	-o UDPEchoServer-Fork
+	 -o UDPEchoServer-Fork
